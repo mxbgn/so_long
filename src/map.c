@@ -1,5 +1,6 @@
 #include "so_long.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <string.h>
 
@@ -58,10 +59,10 @@ static int read_map_lines(FILE *fp, Game *level) {
     errno = 0;
     for (size_t i = 0, buf_size = 0; (bytes = getline(&level->map[i], &buf_size, fp)) > 0; i++) {
         if (level->map[i][bytes - 1] == '\n') level->map[i][--bytes] = '\0';
-        if (bytes > 0 && level->map[i][bytes - 1] == '\r') level->map[i][--bytes] = '\0';
+        if (bytes > 0 && level->map[i][bytes - 1] == '\r') level->map[i][--bytes] = '\0'; // Remove newline on windows and MAC
 
         if (level->size.x == 0) level->size.x = bytes;
-        if (level->size.x != bytes) return ERR_SHAPE;
+        if (level->size.x != bytes || !bytes) return ERR_SHAPE;
 
         buf_size = 0;
         level->size.y++;
@@ -141,4 +142,10 @@ int process_map(Game *level, char *path) {
 err_cleanup:
     free_map(level);
     return status;
+}
+
+void free_map(Game *level) {
+	for (size_t i = 0; i < level->size.y; i++)
+		free(level->map[i]);
+	free(level->map);
 }

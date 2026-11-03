@@ -18,6 +18,17 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(raylib)
 
-add_executable(so_long src/main.c)
+add_executable(so_long
+    src/main.c
+    src/map.c
+)
+
+target_include_directories(so_long PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_compile_definitions(so_long PRIVATE
+    _POSIX_C_SOURCE=200809L
+)
 
 target_link_libraries(so_long PRIVATE raylib)
