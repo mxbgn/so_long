@@ -21,10 +21,9 @@ FetchContent_MakeAvailable(raylib)
 add_executable(so_long
     src/main.c
     src/map.c
-)
-
-target_include_directories(so_long PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
+	src/game.c
+	src/render.c
+	test/test_game.c
 )
 
 target_compile_definitions(so_long PRIVATE

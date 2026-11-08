@@ -24,10 +24,14 @@ static int find_path_bfs(Game *level) {
 
     while (front < rear) {
         Coords cur = queue[front++];
+		if (level->map[cur.y][cur.x] == 'E')
+            continue;
+
         for (int d = 0; d < 4; d++) {
             int x = cur.x + dx[d];
             int y = cur.y + dy[d];
-            if (level->map[y][x] != '1' && !visited[y * level->size.x + x]) {
+            char tile = level->map[y][x];
+            if (tile != '1' && !visited[y * level->size.x + x]) {
                 visited[y * level->size.x + x] = 1;
                 queue[rear++] = (Coords){x, y};
             }
@@ -97,13 +101,13 @@ static int validate_walls(const Game *level) {
 
 static int validate_contents(Game *level) {
     size_t player = 0, exit = 0;
-    level->items = 0;
+    level->collectibles = 0;
 
     for (size_t y = 1; y < level->size.y - 1; y++) {
         for (size_t x = 1; x < level->size.x - 1; x++) {
             char tile = level->map[y][x];
             if (tile == 'C') {
-                level->items++;
+                level->collectibles++;
             } else if (tile == 'P') {
                 player++;
                 level->player.x = x;
@@ -120,7 +124,7 @@ static int validate_contents(Game *level) {
     return MAP_OK;
 }
 
-int process_map(Game *level, char *path) {
+int validate_map(Game *level, char *path) {
     size_t path_size = strlen(path);
     if (path_size < 4 || strcmp(path + path_size - 4, ".ber") != 0)
         return ERR_EXTENSION;
