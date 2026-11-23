@@ -33,6 +33,7 @@ echo "[*] Testing valid maps..."
 run_test "test/maps/valid/small_map1.ber" 0 "Standard valid map"
 run_test "test/maps/valid/small_map2.ber" 0 "Standard valid map"
 run_test "test/maps/valid/medium_map.ber" 0 "Standard valid map"
+run_test "test/maps/valid/big_map.ber" 0 "Standard valid map"
 
 echo "[*] Testing invalid maps..."
 run_test "test/maps/invalid/map_invalid_extension" 1 "Map must have a '.ber' extension"

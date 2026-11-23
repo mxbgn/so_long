@@ -23,7 +23,12 @@ add_executable(so_long
     src/map.c
 	src/game.c
 	src/render.c
+	src/autotile.c
 	test/test_game.c
+)
+
+target_include_directories(so_long PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
 target_compile_definitions(so_long PRIVATE

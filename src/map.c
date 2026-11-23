@@ -1,155 +1,240 @@
 #include "so_long.h"
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <errno.h>
 #include <string.h>
+
+#define INITIAL_MAP_CAPACITY 64
+
+static bool is_walkable(char tile) {
+    return tile == '0' || tile == 'C' || tile == 'E' || tile == 'P';
+}
 
 static int find_path_bfs(Game *level) {
     size_t total = level->size.x * level->size.y;
-    char *visited = calloc(total, sizeof(char));
-    if (!visited) return ERR_MEMORY;
+    char *visited = calloc(total, sizeof(*visited));
+    Coords *queue = malloc(total * sizeof(*queue));
 
-    Coords *queue = malloc(total * sizeof(Coords));
-    if (!queue) {
+    if (!visited || !queue) {
         free(visited);
+        free(queue);
         return ERR_MEMORY;
     }
 
-    size_t rear = 0, front = 0;
-    int dx[4] = {0, 0, -1, 1};
-    int dy[4] = {-1, 1, 0, 0};
+    static const int offsets[4][2] = {
+        {0, -1},
+        {1, 0},
+        {0, 1},
+        {-1, 0}
+    };
 
-    queue[rear++] = (Coords){level->player.x, level->player.y};
+    size_t front = 0;
+    size_t rear = 0;
+
+    queue[rear++] = level->player;
     visited[level->player.y * level->size.x + level->player.x] = 1;
 
     while (front < rear) {
-        Coords cur = queue[front++];
-		if (level->map[cur.y][cur.x] == 'E')
-            continue;
+        Coords current = queue[front++];
 
-        for (int d = 0; d < 4; d++) {
-            int x = cur.x + dx[d];
-            int y = cur.y + dy[d];
-            char tile = level->map[y][x];
-            if (tile != '1' && !visited[y * level->size.x + x]) {
-                visited[y * level->size.x + x] = 1;
-                queue[rear++] = (Coords){x, y};
-            }
+        for (size_t direction = 0; direction < 4; direction++) {
+            size_t x = current.x + offsets[direction][0];
+            size_t y = current.y + offsets[direction][1];
+            size_t index = y * level->size.x + x;
+
+            if (x >= level->size.x || y >= level->size.y)
+                continue;
+
+            if (!is_walkable(level->map[y][x]) || visited[index])
+                continue;
+
+            visited[index] = 1;
+			queue[rear++] = (Coords){x, y};
         }
     }
 
     int result = MAP_OK;
-    for (size_t i = 0; i < total; i++) {
-        int x = i % level->size.x;
-        int y = i / level->size.x;
-        if ((level->map[y][x] == 'C' || level->map[y][x] == 'E') && !visited[i]) {
-            result = ERR_PATH;
-            break;
+
+    for (size_t y = 0; y < level->size.y && result == MAP_OK; y++) {
+        for (size_t x = 0; x < level->size.x; x++) {
+            size_t index = y * level->size.x + x;
+            char tile = level->map[y][x];
+
+            if ((tile == 'C' || tile == 'E') && !visited[index]) {
+                result = ERR_PATH;
+                break;
+            }
         }
     }
 
     free(visited);
     free(queue);
+
     return result;
 }
 
-static int read_map_lines(FILE *fp, Game *level) {
+static int read_map_lines(FILE *file, Game *level) {
+    size_t capacity = INITIAL_MAP_CAPACITY;
     ssize_t bytes;
-    size_t map_height = 64;
-    
-    level->map = calloc(map_height, sizeof *level->map);
-    if (!level->map) return ERR_MEMORY;
 
-    errno = 0;
-    for (size_t i = 0, buf_size = 0; (bytes = getline(&level->map[i], &buf_size, fp)) > 0; i++) {
-        if (level->map[i][bytes - 1] == '\n') level->map[i][--bytes] = '\0';
-        if (bytes > 0 && level->map[i][bytes - 1] == '\r') level->map[i][--bytes] = '\0'; // Remove newline on windows and MAC
+    level->map = calloc(capacity, sizeof(*level->map));
 
-        if (level->size.x == 0) level->size.x = bytes;
-        if (level->size.x != bytes || !bytes) return ERR_SHAPE;
+    if (!level->map)
+        return ERR_MEMORY;
 
-        buf_size = 0;
+    for (size_t y = 0;; y++) {
+        size_t line_capacity = 0;
+        char *line = NULL;
+
+        bytes = getline(&line, &line_capacity, file);
+
+        if (bytes < 0) {
+            free(line);
+            break;
+        }
+
+        if (bytes > 0 && line[bytes - 1] == '\n')
+            line[--bytes] = '\0';
+
+        if (bytes > 0 && line[bytes - 1] == '\r')
+            line[--bytes] = '\0';
+
+        if (level->size.x == 0)
+            level->size.x = bytes;
+
+        if (bytes == 0 || level->size.x != bytes) {
+            free(line);
+            return ERR_SHAPE;
+        }
+
+        level->map[y] = line;
         level->size.y++;
 
-        if (level->size.y == map_height) {
-            char **new_map = realloc(level->map, map_height * 2 * sizeof *level->map);
-            if (!new_map) return ERR_MEMORY;
-            memset(new_map + map_height, 0, map_height * sizeof *new_map);
-            map_height *= 2;
-            level->map = new_map;
+        if (level->size.y == capacity) {
+            char **larger_map = realloc(
+                level->map,
+                capacity * 2 * sizeof(*larger_map)
+            );
+
+            if (!larger_map)
+                return ERR_MEMORY;
+
+            memset(
+                larger_map + capacity,
+                0,
+                capacity * sizeof(*larger_map)
+            );
+
+            level->map = larger_map;
+            capacity *= 2;
         }
     }
 
-    if (errno == ENOMEM) return ERR_MEMORY;
-    if (ferror(fp)) return ERR_READ;
-    if (!level->size.x || !level->size.y) return ERR_SHAPE;
+    if (ferror(file))
+        return ERR_READ;
+
+    if (level->size.x == 0 || level->size.y == 0)
+        return ERR_SHAPE;
 
     return MAP_OK;
 }
 
 static int validate_walls(const Game *level) {
     for (size_t x = 0; x < level->size.x; x++) {
-        if (level->map[0][x] != '1' || level->map[level->size.y - 1][x] != '1')
+        if (level->map[0][x] != '1')
+            return ERR_WALLS;
+
+        if (level->map[level->size.y - 1][x] != '1')
             return ERR_WALLS;
     }
+
     for (size_t y = 0; y < level->size.y; y++) {
-        if (level->map[y][0] != '1' || level->map[y][level->size.x - 1] != '1')
+        if (level->map[y][0] != '1')
+            return ERR_WALLS;
+
+        if (level->map[y][level->size.x - 1] != '1')
             return ERR_WALLS;
     }
+
     return MAP_OK;
 }
 
 static int validate_contents(Game *level) {
-    size_t player = 0, exit = 0;
+    size_t players = 0;
+    size_t exits = 0;
+
     level->collectibles = 0;
 
     for (size_t y = 1; y < level->size.y - 1; y++) {
         for (size_t x = 1; x < level->size.x - 1; x++) {
             char tile = level->map[y][x];
+
             if (tile == 'C') {
                 level->collectibles++;
             } else if (tile == 'P') {
-                player++;
+                players++;
                 level->player.x = x;
                 level->player.y = y;
             } else if (tile == 'E') {
-                exit++;
+				level->exit.x = x;
+				level->exit.y = y;
+                exits++;
             } else if (tile != '0' && tile != '1') {
                 return ERR_TILES;
             }
         }
     }
 
-    if (player != 1 || exit != 1) return ERR_PLAYER_EXIT;
+    if (players != 1 || exits != 1)
+        return ERR_PLAYER_EXIT;
+
     return MAP_OK;
 }
 
 int validate_map(Game *level, char *path) {
-    size_t path_size = strlen(path);
-    if (path_size < 4 || strcmp(path + path_size - 4, ".ber") != 0)
+    size_t path_length = strlen(path);
+    int status;
+
+    if (path_length < 4 || strcmp(path + path_length - 4, ".ber") != 0)
         return ERR_EXTENSION;
 
-    FILE *fp = fopen(path, "r");
-    if (!fp) return ERR_FILE;
+    FILE *file = fopen(path, "r");
 
-    level->size.x = 0;
-    level->size.y = 0;
+    if (!file)
+        return ERR_FILE;
 
-    int status = read_map_lines(fp, level);
-    fclose(fp);
-    if (status != MAP_OK) goto err_cleanup;
-    if ((status = validate_walls(level)) != MAP_OK) goto err_cleanup;
-    if ((status = validate_contents(level)) != MAP_OK) goto err_cleanup;
-    
+    status = read_map_lines(file, level);
+    fclose(file);
+
+    if (status != MAP_OK)
+        goto cleanup;
+
+    status = validate_walls(level);
+
+    if (status != MAP_OK)
+        goto cleanup;
+
+    status = validate_contents(level);
+
+    if (status != MAP_OK)
+        goto cleanup;
+
     return find_path_bfs(level);
 
-err_cleanup:
+cleanup:
     free_map(level);
     return status;
 }
 
 void free_map(Game *level) {
-	for (size_t i = 0; i < level->size.y; i++)
-		free(level->map[i]);
-	free(level->map);
+    if (!level->map)
+        return;
+
+    for (size_t y = 0; y < level->size.y; y++)
+        free(level->map[y]);
+
+    free(level->map);
+    level->map = NULL;
+    level->size.x = 0;
+    level->size.y = 0;
 }
