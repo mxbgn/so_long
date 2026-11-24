@@ -20,8 +20,8 @@ jobs:
         sudo apt-get install -y build-essential cmake libasound2-dev libx11-dev \
         libxrandr-dev libxi-dev libgl1-mesa-dev libglu1-mesa-dev xorg-dev
 
-    - name: Configure CMake
-      run: cmake -B build
+    - name: Configure CMake (with Sanitizers)
+      run: cmake -B build -DCMAKE_C_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
 
     - name: Build project
       run: cmake --build build

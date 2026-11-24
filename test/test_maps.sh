@@ -2,55 +2,43 @@
 
 BINARY="./build/so_long"
 if [ ! -f "$BINARY" ]; then
-    echo "Error: Binary '$BINARY' not found. Run 'make' first."
+    echo "Error: Binary '$BINARY' not found. Build the project first."
     exit 1
 fi
 
 passed=0
 failed=0
 
-# Usage: run_test <map_file> <expected_exit_code> <test_description>
-run_test() {
+check_map() {
     local map_path="$1"
-    local expected="$2"
-    local description="$3"
+    local expected_code="$2"
+    local map_name
+    map_name=$(basename "$map_path")
 
-    # Run binary in headless mode
-    TEST_MAP_ONLY=1 $BINARY "$map_path" > /dev/null 2>&1
-    local actual=$?
+    local output
+    output=$(TEST_MAP_ONLY=1 "$BINARY" "$map_path" 2>&1)
+    local actual_code=$?
 
-    if [ $actual -eq $expected ]; then
-        echo "  [PASS] $description (Got exit code $actual)"
+    if [ "$actual_code" -eq "$expected_code" ]; then
+        echo "  [PASS] $map_name"
         ((passed++))
     else
-        echo "  [FAIL] $description"
-        echo "         Expected exit code: $expected, Got: $actual"
+        echo "  [FAIL] $map_name (expected $expected_code, got $actual_code)"
+        [ -n "$output" ] && echo "         $output"
         ((failed++))
     fi
 }
 
 echo "[*] Testing valid maps..."
-run_test "test/maps/valid/small_map1.ber" 0 "Standard valid map"
-run_test "test/maps/valid/small_map2.ber" 0 "Standard valid map"
-run_test "test/maps/valid/medium_map.ber" 0 "Standard valid map"
-run_test "test/maps/valid/big_map.ber" 0 "Standard valid map"
+for map in test/maps/valid/*.ber; do
+    check_map "$map" 0
+done
 
 echo "[*] Testing invalid maps..."
-run_test "test/maps/invalid/map_invalid_extension" 1 "Map must have a '.ber' extension"
-run_test "test/maps/invalid/map_not_rectangular.ber" 4 "Map is not rectangular"
-run_test "test/maps/invalid/map_empty_line1.ber" 4 "Map contains an empty line"
-run_test "test/maps/invalid/map_empty_line2.ber" 4 "Map contains an empty line"
-run_test "test/maps/invalid/map_empty_line3.ber" 4 "Map contains an empty line"
-run_test "test/maps/invalid/map_missing_wall.ber" 5 "Map is missing a delimiting wall"
-run_test "test/maps/invalid/map_extra_parameter.ber" 6 "Map contains invalid characters"
-run_test "test/maps/invalid/map_no_path.ber" 8 "Map has an invalid path to all interractive tiles"
-run_test "test/maps/invalid/map_extra_P.ber" 7 "Map has an extra player"
-run_test "test/maps/invalid/map_missing_E.ber" 7 "Map is missing an exit"
-run_test "test/maps/invalid/map_missing_P.ber" 7 "Map is missing a player"
-echo "Results: $passed passed, $failed failed."
+for map in test/maps/invalid/*; do
+    check_map "$map" 1
+done
 
-if [ $failed -gt 0 ]; then
-    exit 1
-else
-    exit 0
-fi
+echo ""
+echo "Results: $passed passed, $failed failed."
+[ "$failed" -eq 0 ]

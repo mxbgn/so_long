@@ -32,18 +32,30 @@ static const char *get_error_message(MapError error) {
     }
 }
 
-static int run_test(void) {
+static int run_logic_test(void) {
     int result = test_game();
-    if (result != 0)
+    if (result != 0) {
         fprintf(stderr, "Test suite failed with code %d\n", result);
-    return result;
+		return 1;
+	}
+    return 0;
+}
+
+static int run_parsing_test(Game *game, char *map) {
+    MapError error = validate_map(game, map);
+    free_map(game);
+    if (error != MAP_OK) {
+        fprintf(stderr, "Error: %s\n", get_error_message(error));
+        return 1;
+    }
+    return 0;
 }
 
 static int run_game(Game *game, char *path) {
     MapError error = validate_map(game, path);
     if (error != MAP_OK) {
         fprintf(stderr, "Error: %s\n", get_error_message(error));
-        return error;
+        return 1;
     }
 
     InitWindow(
@@ -65,25 +77,20 @@ static int run_game(Game *game, char *path) {
     unload_assets(game->assets);
     CloseWindow();
     free_map(game);
-    return MAP_OK;
+    return 0;
 }
 
 int main(int argc, char **argv) {
     Game game = {0};
 
     if (argc != 2) {
-        fprintf(
-            stderr,
-            "Usage: %s <map_file.ber>\n       %s --test\n",
-            argv[0],
-            argv[0]
-        );
+        fprintf(stderr, "Usage: %s <map_file.ber>\n", argv[0]);
         return 1;
     }
     if (strcmp(argv[1], "--test") == 0)
-        return run_test();
+        return run_logic_test();
     if (getenv("TEST_MAP_ONLY"))
-        return validate_map(&game, argv[1]);
+        return run_parsing_test(&game, argv[1]);
 
     return run_game(&game, argv[1]);
 }
