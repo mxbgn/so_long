@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include "raylib.h"
 #include "so_long.h"
 #include "render.h"
@@ -65,12 +66,13 @@ static int run_game(Game *game, char *path) {
     );
     SetTargetFPS(60);
     game->assets = load_assets();
-
+    srand((unsigned int)time(NULL));
+    LevelType type = rand() % TYPE_SIZE;
     while (!WindowShouldClose() && !game->won) {
         play_game(game);
         BeginDrawing();
         ClearBackground(BLACK);
-        draw_game(game);
+        draw_game(game, type);
         EndDrawing();
     }
 

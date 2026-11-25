@@ -74,12 +74,14 @@ Val:  128    64    32    16     8     4     2     1
 #### Lookup Table (LUT) Population
 At startup, separate 256-entry lookup tables for walls and floors are populated using a rule-based variant helper that pairs a **required neighbor mask** with an **optional diagonal mask**. Any 8-bit index matching the required bits (after masking out irrelevant diagonals) maps to the same atlas coordinate, compressing 256 cases into a small set of geometric rules while guaranteeing $O(1)$ array lookup during rendering.
 
+#### Deterministic Tile Variants
+To break up visual repetition on flat walls and open floors without storing per-tile state, lookups apply a stateless integer avalanche hash seeded by tile coordinates and map dimensions. A percentage threshold preserves the base tile at a fixed rate while distributing decorative variants uniformly, followed by atlas row offsets.
+
 ### Rendering Pipeline
 Rendering runs across the tile grid followed by a decoupled entity pass:
-1. **Base Floor Pass:** Draws a default floor underneath wall tiles and context-aware autotiled floors underneath walkable tiles so transparent edges on wall and item sprites blend cleanly.
-2. **Tile Foreground Pass:** Draws autotiled walls, frame-animated collectibles, and the exit using atlas coordinates and animation metadata.
+1. **Base Floor Pass:** Draws a default floor underneath wall tiles and context-aware autotiled floors (with deterministic variant selection) underneath walkable tiles so transparent edges on wall and item sprites blend cleanly.
+2. **Tile Foreground Pass:** Draws autotiled walls (applying deterministic variants and biome offsets), frame-animated collectibles, and the exit using atlas coordinates and animation metadata.
 3. **Entity Pass:** Renders dynamic entities independently of the grid, smoothly interpolating between discrete grid steps and selecting directional sprite animations (idle vs. running, left vs. right) based on movement state.
-
 ---
 
 ## Testing & CI

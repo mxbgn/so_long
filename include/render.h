@@ -9,8 +9,8 @@
 
 typedef struct Assets {
 	Texture2D floors;
+	Texture2D surground;
 	Texture2D walls;
-	Texture2D blocks;
 	Texture2D player;
 	Texture2D items;
 } Assets;
@@ -32,8 +32,15 @@ typedef enum {
 	NEIGHBOR_NW = 1 << 7
 } NeighborMask;
 
+typedef enum {
+	TYPE_1,
+	TYPE_2,
+	TYPE_3,
+	TYPE_SIZE
+} LevelType;
+
 # define COLLECTIBLE_SPRITE ((Coords){0, 0})
-# define EXIT_SPRITE ((Coords){3, 0})
+# define EXIT_SPRITE ((Coords){3, 15})
 
 #define PLAYER_IDLE_RIGHT	(Coords){0, 0}
 #define PLAYER_IDLE_LEFT	(Coords){0, 1}
@@ -89,7 +96,7 @@ typedef enum {
 # define FLOOR_N_E_S_W_NE_SE_NW ((Coords){5, 2})
 # define FLOOR_FULL ((Coords){9, 2})
 
-# define WALL_SOLO ((Coords){0, 2})
+# define WALL_SOLO ((Coords){0, 17})
 # define WALL_N ((Coords){1, 2})
 # define WALL_E ((Coords){1, 0})
 # define WALL_S ((Coords){3, 0})
@@ -106,13 +113,17 @@ typedef enum {
 # define WALL_SE_NW ((Coords){0, 1})
 # define WALL_FULL ((Coords){0, 3})
 
+# define SURGROUND_VAR_1 ((Coords){12, 0})
+# define SURGROUND_VAR_2 ((Coords){12, 1})
+
 Assets *load_assets(void);
 void unload_assets(Assets *assets);
-void draw_game(Game *game);
+void draw_game(Game *game, LevelType type);
+void draw_sprite(const SpriteRef *sprite, float x, float y, size_t frame);
 
 void init_wall_lut(const Assets *assets);
 void init_floor_lut(const Assets *assets);
-SpriteRef lookup_wall_sprite(const Game *game, size_t x, size_t y);
-SpriteRef lookup_floor_sprite(const Game *game, size_t x, size_t y);
+SpriteRef lookup_wall_sprite(const Game *game, size_t x, size_t y, LevelType type);
+SpriteRef lookup_floor_sprite(const Game *game, size_t x, size_t y, LevelType type);
 
 #endif
