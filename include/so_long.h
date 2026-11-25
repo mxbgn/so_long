@@ -3,17 +3,27 @@
 
 # include <stddef.h>
 # include <stdbool.h>
+#include "raylib.h"
 
 typedef struct {
 	size_t x;
 	size_t y;
 } Coords;
 
+typedef struct {
+	Coords  pos;
+	Vector2 start_pos;
+	Vector2 visual_pos;
+	double  move_start;
+	bool    moved;
+	bool    facing_left;
+} Entity;
+
 typedef struct Assets Assets;
 typedef struct {
 	char **map;
 	Coords size;
-	Coords player;
+	Entity player;
 	Coords exit;
 	size_t collectibles;
 	Assets *assets;

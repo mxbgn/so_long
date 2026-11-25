@@ -12,17 +12,17 @@ printf("Running headless game logic tests with real map loading...\n");
     assert(game.collectibles == 2);
 
     move_player(&game, 1, 0); // Move to (2,1) - empty space '0'
-    assert(game.player.x == 2 && game.player.y == 1);
+    assert(game.player.pos.x == 2 && game.player.pos.y == 1);
 
     move_player(&game, 1, 0); // Move to (3,1) - collectible 'C'
-    assert(game.player.x == 3 && game.player.y == 1);
+    assert(game.player.pos.x == 3 && game.player.pos.y == 1);
     assert(game.collectibles == 1);
 
     move_player(&game, 0, 1); // Move to (3,2) - empty space '0'
-    assert(game.player.x == 3 && game.player.y == 2);
+    assert(game.player.pos.x == 3 && game.player.pos.y == 2);
 
     move_player(&game, -1, 0); // Move to (2,2) - collectible 'C'
-    assert(game.player.x == 2 && game.player.y == 2);
+    assert(game.player.pos.x == 2 && game.player.pos.y == 2);
     assert(game.collectibles == 0);
 
     move_player(&game, 1, 0);

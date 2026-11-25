@@ -20,10 +20,10 @@ FetchContent_MakeAvailable(raylib)
 
 add_executable(so_long
     src/main.c
-    src/map.c
-	src/game.c
-	src/render.c
-	src/autotile.c
+    src/parser/map.c
+	src/game/game.c
+	src/render/render.c
+	src/render/autotile.c
 	test/test_game.c
 )
 

@@ -32,9 +32,13 @@ typedef enum {
 	NEIGHBOR_NW = 1 << 7
 } NeighborMask;
 
-# define PLAYER_SPRITE ((Coords){0, 0})
 # define COLLECTIBLE_SPRITE ((Coords){0, 0})
 # define EXIT_SPRITE ((Coords){3, 0})
+
+#define PLAYER_IDLE_RIGHT	(Coords){0, 0}
+#define PLAYER_IDLE_LEFT	(Coords){0, 1}
+#define PLAYER_RUN_RIGHT	(Coords){0, 2}
+#define PLAYER_RUN_LEFT		(Coords){0, 3}
 
 # define FLOOR_DEFAULT ((Coords){10, 1})
 # define FLOOR_SOLO ((Coords){0, 3})
@@ -104,7 +108,7 @@ typedef enum {
 
 Assets *load_assets(void);
 void unload_assets(Assets *assets);
-void draw_game(const Game *game);
+void draw_game(Game *game);
 
 void init_wall_lut(const Assets *assets);
 void init_floor_lut(const Assets *assets);

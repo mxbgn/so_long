@@ -46,20 +46,20 @@ flowchart TD
 
 ## Core Modules
 
-### A. Map Parser & Validator
+### Map Parser & Validator
 Loads the `.ber` file into a 2D character grid and enforces all structural and gameplay constraints before initializing graphics:
 - **Extension & File I/O:** Verifies the `.ber` extension and reads map rows cleanly without trailing newline artifacts.
 - **Shape & Boundary Checks:** Ensures uniform row widths and verifies that all perimeter tiles are walls (`1`).
 - **Entity Audit:** Counts player (`P`), exit (`E`), and collectible (`C`) tiles, recording initial positions while rejecting unknown characters or invalid counts (`P != 1`, `E != 1`).
 - **Reachability (Flood Fill):** Traverses from the player's starting position on a cloned grid to confirm every collectible and the exit can be reached without passing through walls.
 
-### B. Game State & Logic
+### Game State & Logic
 A single state structure tracks the live map grid, dimensions, player and exit coordinates, remaining collectibles, move count, and completion status:
 - Computes target coordinates from directional input.
 - Blocks movement into walls.
 - Updates collectible counts, clears collected tiles to floor and triggers the win state upon clearing collectibles and reaching the exit.
 
-### C. 256-Case Bitmask Autotiling Engine
+### 256-Case Bitmask Autotiling Engine
 Rather than branching on neighbor combinations every frame, tile connections are resolved via an **8-bit neighbor bitmask**.
 
 #### Bit Layout
@@ -74,10 +74,11 @@ Val:  128    64    32    16     8     4     2     1
 #### Lookup Table (LUT) Population
 At startup, separate 256-entry lookup tables for walls and floors are populated using a rule-based variant helper that pairs a **required neighbor mask** with an **optional diagonal mask**. Any 8-bit index matching the required bits (after masking out irrelevant diagonals) maps to the same atlas coordinate, compressing 256 cases into a small set of geometric rules while guaranteeing $O(1)$ array lookup during rendering.
 
-### D. Rendering Pipeline
-Rendering runs in two passes per tile across the grid:
+### Rendering Pipeline
+Rendering runs across the tile grid followed by a decoupled entity pass:
 1. **Base Floor Pass:** Draws a default floor underneath wall tiles and context-aware autotiled floors underneath walkable tiles so transparent edges on wall and item sprites blend cleanly.
-2. **Foreground Pass:** Draws autotiled walls, frame-animated collectibles, the exit, and the player using atlas coordinates and animation frame metadata.
+2. **Tile Foreground Pass:** Draws autotiled walls, frame-animated collectibles, and the exit using atlas coordinates and animation metadata.
+3. **Entity Pass:** Renders dynamic entities independently of the grid, smoothly interpolating between discrete grid steps and selecting directional sprite animations (idle vs. running, left vs. right) based on movement state.
 
 ---
 

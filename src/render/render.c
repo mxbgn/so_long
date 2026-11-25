@@ -27,11 +27,17 @@ void unload_assets(Assets *assets) {
 	free(assets);
 }
 
-static void draw_sprite(const SpriteRef *sprite, size_t x, size_t y, double time) {
-	size_t frame = 0;
-	if (sprite->frame_count > 1)
-		frame = (size_t)(time * 8.0) % sprite->frame_count;
+static size_t get_anim_frame(const SpriteRef *sprite, double time) {
+	if (sprite->frame_count <= 1)
+		return 0;
+	return (size_t)(time * 5.0) % sprite->frame_count;
+}
 
+static float lerp(float a, float b, float t) {
+	return a + (b - a) * t;
+}
+
+static void draw_sprite(const SpriteRef *sprite, float x, float y, size_t frame) {
 	Rectangle source = (Rectangle){
 		.x = (sprite->sprite.x + frame) * SPRITE_SIZE,
 		.y = sprite->sprite.y * SPRITE_SIZE,
@@ -46,10 +52,40 @@ static void draw_sprite(const SpriteRef *sprite, size_t x, size_t y, double time
 		.height = TILE_SIZE,
 	};
 
-	DrawTexturePro(*sprite->texture, source, destination, (Vector2){0.0f, 0.0f}, 0.0f, WHITE);
+	DrawTexturePro(*sprite->texture, source, destination,
+		(Vector2){0.0f, 0.0f}, 0.0f, WHITE);
 }
 
-void draw_game(const Game *game) {
+static void draw_entity(Entity *ent, Texture2D *texture, double time) {
+	if (ent->moved) {
+		ent->start_pos = ent->visual_pos;
+		ent->move_start = time;
+		ent->moved = false;
+	}
+
+	const double step_duration = 0.25;
+	double elapsed = time - ent->move_start;
+	SpriteRef sprite;
+	size_t frame;
+	if (ent->move_start > 0.0 && elapsed < step_duration) {
+		float t = (float)(elapsed / step_duration);
+		ent->visual_pos.x = lerp(ent->start_pos.x, (float)ent->pos.x, t);
+		ent->visual_pos.y = lerp(ent->start_pos.y, (float)ent->pos.y, t);
+
+		Coords row = ent->facing_left ? PLAYER_RUN_LEFT : PLAYER_RUN_RIGHT;
+		sprite = (SpriteRef){texture, row, 4};
+		frame = (size_t)(t * sprite.frame_count);
+	} else {
+		ent->visual_pos = (Vector2){(float)ent->pos.x, (float)ent->pos.y};
+		Coords row = ent->facing_left ? PLAYER_IDLE_LEFT : PLAYER_IDLE_RIGHT;
+		sprite = (SpriteRef){texture, row, 3};
+		frame = get_anim_frame(&sprite, elapsed - step_duration);
+	}
+
+	draw_sprite(&sprite, ent->visual_pos.x, ent->visual_pos.y, frame);
+}
+
+void draw_game(Game *game) {
 	double time = GetTime();
 	SpriteRef sprite;
 
@@ -60,17 +96,16 @@ void draw_game(const Game *game) {
 				sprite = (SpriteRef){&game->assets->floors, FLOOR_DEFAULT, 1};
 			else
 				sprite = lookup_floor_sprite(game, x, y);
-			draw_sprite(&sprite, x, y, time);
+			draw_sprite(&sprite, (float)x, (float)y, get_anim_frame(&sprite, time));
+
 			switch (tile) {
 			case '1':
 				sprite = lookup_wall_sprite(game, x, y);
 				break;
 			case 'P':
-				if (x == game->exit.x && y == game->exit.y) {
-					sprite = (SpriteRef){&game->assets->blocks, EXIT_SPRITE, 1};
-					draw_sprite(&sprite, x, y, time);
-				}
-				sprite = (SpriteRef){&game->assets->player, PLAYER_SPRITE, 1};
+				if (x != game->exit.x || y != game->exit.y)
+					continue;
+				sprite = (SpriteRef){&game->assets->blocks, EXIT_SPRITE, 1};
 				break;
 			case 'C':
 				sprite = (SpriteRef){&game->assets->items, COLLECTIBLE_SPRITE, 4};
@@ -81,7 +116,10 @@ void draw_game(const Game *game) {
 			default:
 				continue;
 			}
-			draw_sprite(&sprite, x, y, time);
+
+			draw_sprite(&sprite, (float)x, (float)y, get_anim_frame(&sprite, time));
 		}
 	}
+
+	draw_entity(&game->player, &game->assets->player, time);
 }
